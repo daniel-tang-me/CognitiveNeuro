@@ -1,0 +1,7 @@
+
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.streamlit/secrets.toml
+AD_all_patients.csv

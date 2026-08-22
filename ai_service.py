@@ -1,5 +1,6 @@
 """OpenRouter integration for the contextual CognitiveNeuro assistant."""
 
+import json
 import os
 from typing import Any
 
@@ -14,6 +15,9 @@ RATE_LIMIT_MESSAGE = (
     "The CognitiveNeuro Assistant is temporarily busy due to a service rate limit. "
     "Please try again shortly."
 )
+
+HTTP_SESSION = requests.Session()
+HTTP_SESSION.trust_env = False
 
 SYSTEM_PROMPT = """You are the CognitiveNeuro educational assistant embedded in an
 experimental EEG research application. Explain the supplied analysis in plain,
@@ -67,18 +71,23 @@ def answer_question(
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "system", "content": _analysis_summary(context)},
     ]
-    for message in (history or [])[-10:]:
+    for message in (history or [])[-6:]:
         role, content = message.get("role"), message.get("content")
         if role in {"user", "assistant"} and isinstance(content, str):
-            messages.append({"role": role, "content": content[:4000]})
-    messages.append({"role": "user", "content": question[:4000]})
+            messages.append({"role": role, "content": content[:2000]})
+    messages.append({"role": "user", "content": question[:2000]})
 
     try:
-        response = requests.post(
+        response = HTTP_SESSION.post(
             OPENROUTER_URL,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json={"model": OPENROUTER_MODEL, "messages": messages},
-            timeout=30,
+            json={
+                "model": OPENROUTER_MODEL,
+                "messages": messages,
+                "max_tokens": 450,
+                "temperature": 0.2,
+            },
+            timeout=(4, 18),
         )
         if response.status_code == 429:
             return RATE_LIMIT_MESSAGE
@@ -87,3 +96,64 @@ def answer_question(
         return content.strip() if isinstance(content, str) and content.strip() else GENERIC_ERROR_MESSAGE
     except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
         return GENERIC_ERROR_MESSAGE
+
+
+def answer_question_stream(
+    question: str,
+    context: dict[str, Any] | None,
+    history: list[dict[str, str]] | None = None,
+):
+    """Yield an OpenRouter response as it arrives for immediate UI feedback."""
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        yield MISSING_CREDENTIALS_MESSAGE
+        return
+
+    messages: list[dict[str, str]] = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": _analysis_summary(context)},
+    ]
+    for message in (history or [])[-6:]:
+        role, content = message.get("role"), message.get("content")
+        if role in {"user", "assistant"} and isinstance(content, str):
+            messages.append({"role": role, "content": content[:2000]})
+    messages.append({"role": "user", "content": question[:2000]})
+
+    try:
+        with HTTP_SESSION.post(
+            OPENROUTER_URL,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": OPENROUTER_MODEL,
+                "messages": messages,
+                "max_tokens": 450,
+                "temperature": 0.2,
+                "stream": True,
+            },
+            timeout=(4, 18),
+            stream=True,
+        ) as response:
+            if response.status_code == 429:
+                yield RATE_LIMIT_MESSAGE
+                return
+            response.raise_for_status()
+            response.encoding = "utf-8"
+            received_content = False
+            for line in response.iter_lines(decode_unicode=True):
+                if not line or not line.startswith("data: "):
+                    continue
+                payload = line[6:]
+                if payload == "[DONE]":
+                    break
+                try:
+                    event = json.loads(payload)
+                    content = event["choices"][0].get("delta", {}).get("content")
+                except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+                    continue
+                if content:
+                    received_content = True
+                    yield content
+            if not received_content:
+                yield GENERIC_ERROR_MESSAGE
+    except requests.RequestException:
+        yield GENERIC_ERROR_MESSAGE

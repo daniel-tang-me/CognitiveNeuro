@@ -1,8 +1,9 @@
 """Contextual CognitiveNeuro assistant available throughout the application."""
 
 import streamlit as st
+import streamlit.components.v1 as components
 
-from ai_service import answer_question
+from ai_service import answer_question_stream
 
 
 SUGGESTED_PROMPTS = (
@@ -51,11 +52,27 @@ def render_analysis_assistant():
             border:1px solid #cddadd; border-radius:4px; padding:1.15rem;
             box-shadow:0 16px 42px rgba(37,59,71,.16);
         }
+        .sage-question {
+            display:inline-block; background:#dceff7; color:#000;
+            border-radius:999px; padding:.34rem .7rem; margin-bottom:.8rem;
+            font-size:.72rem; font-weight:600;
+        }
+        .sage-greeting {
+            color:#000; font-size:1.5rem; line-height:1.2; margin:0 0 .24rem;
+        }
+        .sage-help {
+            color:#000; font-size:.88rem; line-height:1.4; margin:0 0 .85rem;
+        }
         div[data-testid="stPopoverBody"] h4 { font-size:1rem !important; margin-bottom:.2rem; }
         div[data-testid="stPopoverBody"] [data-testid="stButton"] button {
             width:100%; justify-content:flex-start; background:transparent; border:0;
             border-bottom:1px solid #dce5e7; border-radius:0 !important; padding:.5rem 0;
             color:#486a7e; font-size:.8rem; min-height:auto;
+        }
+        div[data-testid="stPopoverBody"] button[data-testid="stBaseButton-primary"] {
+            justify-content:center; background:#dceff7 !important; color:#000 !important;
+            border:1px solid #bfdde9 !important; border-radius:6px !important;
+            padding:.55rem .75rem; margin-bottom:.45rem;
         }
         div[data-testid="stPopoverBody"] [data-testid="stChatMessage"] {
             background:transparent; border:0; border-top:1px solid #e0e7e9;
@@ -81,8 +98,23 @@ def render_analysis_assistant():
         " ",
         icon=":material/neurology:",
     ):
-        st.markdown('<div class="eyebrow">Current EEG Analysis</div>', unsafe_allow_html=True)
-        st.markdown("#### CognitiveNeuro Assistant")
+        _enable_chat_autoscroll()
+        st.markdown(
+            '<div class="sage-question">Any questions?</div>'
+            '<div class="sage-greeting">Hi, I\'m <strong>Sage</strong>.</div>'
+            '<div class="sage-help">What can I help you with?</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button(
+            "Go to current EEG analysis",
+            key="assistant_current_analysis",
+            width="stretch",
+            type="primary",
+        ):
+            st.session_state.page = "EEG Analysis"
+            st.session_state.top_navigation = "EEG Analysis"
+            st.rerun()
+
         context = st.session_state.get("analysis_context")
         if context:
             st.caption(
@@ -99,7 +131,7 @@ def render_analysis_assistant():
             st.caption("The assistant explains experimental output and uncertainty; it does not diagnose or prescribe.")
             for index, prompt in enumerate(SUGGESTED_PROMPTS):
                 if st.button(prompt, key=f"assistant_suggestion_{index}", width="stretch"):
-                    _submit(prompt, context)
+                    _submit_streaming(prompt, context)
                     st.rerun()
 
         for message in messages[-6:]:
@@ -108,18 +140,63 @@ def render_analysis_assistant():
 
         prompt = st.chat_input("Ask about this analysis…", key="analysis_assistant_input")
         if prompt:
-            _submit(prompt, context)
+            _submit_streaming(prompt, context)
             st.rerun()
 
 
-def _submit(prompt: str, context: dict | None):
+def _submit_streaming(prompt: str, context: dict | None):
     history = list(st.session_state.messages)
     st.session_state.messages.append({"role": "user", "content": prompt})
-    try:
-        response = answer_question(prompt, context, history=history)
-    except Exception:
-        response = (
-            "The CognitiveNeuro Assistant is temporarily unavailable. Your analysis "
-            "context remains saved; please try again shortly."
-        )
+    with st.chat_message("user"):
+        st.write(prompt)
+    with st.chat_message("assistant"):
+        try:
+            response = st.write_stream(answer_question_stream(prompt, context, history=history))
+        except Exception:
+            response = (
+                "The CognitiveNeuro Assistant is temporarily unavailable. Your analysis "
+                "context remains saved; please try again shortly."
+            )
+            st.write(response)
     st.session_state.messages.append({"role": "assistant", "content": response})
+
+
+def _enable_chat_autoscroll():
+    """Keep the open assistant popover pinned to new streamed content."""
+    components.html(
+        """
+        <script>
+        (() => {
+          const parentDocument = window.parent.document;
+          const findPopover = () => parentDocument.querySelector(
+            'div[data-testid="stPopoverBody"]'
+          );
+          let observed = null;
+          let observer = null;
+
+          const attach = () => {
+            const popover = findPopover();
+            if (!popover || popover === observed) return;
+            if (observer) observer.disconnect();
+            observed = popover;
+            observer = new MutationObserver(() => {
+              requestAnimationFrame(() => {
+                popover.scrollTop = popover.scrollHeight;
+              });
+            });
+            observer.observe(popover, {
+              childList: true,
+              subtree: true,
+              characterData: true
+            });
+          };
+
+          attach();
+          const finder = window.setInterval(attach, 250);
+          window.setTimeout(() => window.clearInterval(finder), 30000);
+        })();
+        </script>
+        """,
+        height=0,
+        scrolling=False,
+    )

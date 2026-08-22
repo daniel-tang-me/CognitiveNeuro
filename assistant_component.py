@@ -187,30 +187,20 @@ def _enable_chat_autoscroll(scroll_on_open: bool = False):
           let needsOpenScroll = scrollOnOpen;
 
           const scrollToBottom = (popover) => {
-            const candidates = [popover, ...popover.querySelectorAll('*')];
-            let candidate = popover.parentElement;
+            let scroller = popover;
+            let candidate = popover;
             while (candidate && candidate !== parentDocument.body) {
-              candidates.push(candidate);
+              if (candidate.scrollHeight > candidate.clientHeight) {
+                const overflow = parentDocument.defaultView
+                  .getComputedStyle(candidate).overflowY;
+                if (overflow === 'auto' || overflow === 'scroll') {
+                  scroller = candidate;
+                  break;
+                }
+              }
               candidate = candidate.parentElement;
             }
-            candidates.forEach((element) => {
-              if (element.scrollHeight > element.clientHeight) {
-                element.scrollTop = element.scrollHeight;
-              }
-            });
-
-            const messages = popover.querySelectorAll('[data-testid="stChatMessage"]');
-            const latest = messages[messages.length - 1];
-            if (latest) {
-              const latestBottom = latest.lastElementChild || latest;
-              latestBottom.scrollIntoView({block: 'end', inline: 'nearest'});
-            }
-          };
-
-          const settleAtBottom = (popover) => {
-            scrollToBottom(popover);
-            window.setTimeout(() => scrollToBottom(popover), 40);
-            window.setTimeout(() => scrollToBottom(popover), 120);
+            scroller.scrollTop = scroller.scrollHeight;
           };
 
           const attach = () => {
@@ -220,7 +210,7 @@ def _enable_chat_autoscroll(scroll_on_open: bool = False):
             observed = popover;
             if (needsOpenScroll) {
               window.setTimeout(() => {
-                settleAtBottom(popover);
+                scrollToBottom(popover);
                 needsOpenScroll = false;
               }, 50);
             }
@@ -232,7 +222,9 @@ def _enable_chat_autoscroll(scroll_on_open: bool = False):
                 return target && target.closest('[data-testid="stChatMessage"]');
               });
               if (!chatChanged) return;
-              requestAnimationFrame(() => settleAtBottom(popover));
+              requestAnimationFrame(() => {
+                scrollToBottom(popover);
+              });
             });
             observer.observe(popover, {
               childList: true,

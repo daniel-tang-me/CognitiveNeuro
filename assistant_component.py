@@ -152,22 +152,14 @@ def _submit_streaming(prompt: str, context: dict | None):
     with st.chat_message("user"):
         st.write(prompt)
     with st.chat_message("assistant"):
-        stream_marker = st.empty()
-        stream_marker.markdown(
-            '<span id="sage-stream-active" style="display:none"></span>',
-            unsafe_allow_html=True,
-        )
         try:
-            with st.spinner("Sage is reviewing the current analysis…"):
-                response = st.write_stream(answer_question_stream(prompt, context, history=history))
+            response = st.write_stream(answer_question_stream(prompt, context, history=history))
         except Exception:
             response = (
                 "The CognitiveNeuro Assistant is temporarily unavailable. Your analysis "
                 "context remains saved; please try again shortly."
             )
             st.write(response)
-        finally:
-            stream_marker.empty()
     st.session_state.messages.append({"role": "assistant", "content": response})
 
 
@@ -191,7 +183,11 @@ def _enable_chat_autoscroll():
             observed = popover;
             observer = new MutationObserver(() => {
               requestAnimationFrame(() => {
-                if (!popover.querySelector('#sage-stream-active')) return;
+                const focused = parentDocument.activeElement;
+                if (focused && popover.contains(focused) &&
+                    (focused.tagName === 'TEXTAREA' || focused.tagName === 'INPUT')) {
+                  return;
+                }
                 let scroller = popover;
                 let candidate = popover;
                 while (candidate && candidate !== parentDocument.body) {

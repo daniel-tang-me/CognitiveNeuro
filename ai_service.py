@@ -15,10 +15,6 @@ RATE_LIMIT_MESSAGE = (
     "The CognitiveNeuro Assistant is temporarily busy due to a service rate limit. "
     "Please try again shortly."
 )
-AUTH_ERROR_MESSAGE = (
-    "The AI assistant could not authenticate with OpenRouter. Update "
-    "OPENROUTER_API_KEY in the deployed app's secrets and reboot the app."
-)
 
 HTTP_SESSION = requests.Session()
 HTTP_SESSION.trust_env = False
@@ -143,8 +139,6 @@ def answer_question(
             },
             timeout=(4, 18),
         )
-        if response.status_code == 401:
-            return AUTH_ERROR_MESSAGE
         if response.status_code == 429:
             return RATE_LIMIT_MESSAGE
         response.raise_for_status()
@@ -189,9 +183,6 @@ def answer_question_stream(
             timeout=(4, 18),
             stream=True,
         ) as response:
-            if response.status_code == 401:
-                yield AUTH_ERROR_MESSAGE
-                return
             if response.status_code == 429:
                 yield RATE_LIMIT_MESSAGE
                 return

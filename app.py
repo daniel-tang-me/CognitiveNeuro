@@ -43,7 +43,6 @@ def initialize_state():
         "analysis_timestamp": None,
         "analysis_context": None,
         "analysis_recommendation": None,
-        "assistant_upload_context": None,
         "messages": [],
     }
     for key, value in defaults.items():
@@ -333,36 +332,6 @@ def render_results():
     disclaimer()
 
 
-def _validated_upload_assistant_context(eeg: pd.DataFrame, warnings: list[str]) -> dict:
-    """Build bounded upload context without retaining or sending raw sample rows."""
-    feature_values = {}
-    means = eeg[CHANNELS].mean()
-    deviations = eeg[CHANNELS].std()
-    for channel in CHANNELS:
-        feature_values[f"{channel}_mean"] = float(means[channel])
-        feature_values[f"{channel}_std"] = float(deviations[channel])
-    return {
-        "result": {},
-        "bands": {},
-        "source": "Validated raw 16-channel CSV",
-        "timestamp": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z"),
-        "recording": {
-            "samples": len(eeg),
-            "duration_seconds": len(eeg) / FS,
-            "complete_epochs": len(eeg) // EPOCH,
-            "channels": len(CHANNELS),
-        },
-        "feature_values": feature_values,
-        "metadata": {
-            "validation_status": "input validated",
-            "model_status": "analysis not yet run",
-            "clinical_validation": "not clinically validated",
-        },
-        "warnings": list(warnings),
-        "verdict": "Model analysis not yet run",
-    }
-
-
 def save_analysis(
     result: dict,
     bands: dict[str, float],
@@ -396,7 +365,6 @@ def save_analysis(
             else "No Alzheimer's-associated EEG pattern detected"
         ),
     }
-    st.session_state.assistant_upload_context = None
     st.session_state.analysis_recommendation = None
     st.session_state.scroll_to_analysis_results = True
 
@@ -483,7 +451,6 @@ def analysis_page():
         uploaded = st.file_uploader("Drop a CSV here or browse", type=["csv"], key="eeg_upload")
         eeg = None
         if uploaded is None:
-            st.session_state.assistant_upload_context = None
             st.markdown(
                 '<div class="empty-state"><strong>No dataset selected.</strong><br>Upload a CSV '
                 'with the 16 required EEG channels to validate and enable analysis.</div>',
@@ -503,9 +470,6 @@ def analysis_page():
                         "errors": errors,
                         "warnings": warnings,
                         "eeg": eeg,
-                        "assistant_context": _validated_upload_assistant_context(eeg, warnings)
-                        if valid
-                        else None,
                     }
                     st.session_state.validated_eeg_upload = cached_upload
                 dataframe = cached_upload["dataframe"]
@@ -513,11 +477,6 @@ def analysis_page():
                 errors = cached_upload["errors"]
                 warnings = cached_upload["warnings"]
                 eeg = cached_upload["eeg"]
-                if "assistant_context" not in cached_upload:
-                    cached_upload["assistant_context"] = (
-                        _validated_upload_assistant_context(eeg, warnings) if valid else None
-                    )
-                st.session_state.assistant_upload_context = cached_upload["assistant_context"]
                 if valid:
                     st.markdown(
                         f'<div class="empty-state"><strong>Feature validation complete.</strong><br>'

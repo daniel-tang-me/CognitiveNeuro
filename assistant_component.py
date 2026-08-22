@@ -118,18 +118,14 @@ def render_analysis_assistant():
             st.session_state.top_navigation = "EEG Analysis"
             st.rerun(scope="app")
 
-        context = st.session_state.get("assistant_upload_context") or st.session_state.get("analysis_context")
+        context = st.session_state.get("analysis_context")
         if context:
             context = {**context, "page": st.session_state.get("page", "EEG Analysis")}
         if context:
-            probability = context.get("result", {}).get("pattern_probability")
-            if isinstance(probability, (int, float)):
-                st.caption(
-                    f"Remembered analysis · {context['source']} · "
-                    f"{probability * 100:.1f}% pattern similarity"
-                )
-            else:
-                st.caption(f"Remembered upload · {context['source']} · ready for questions")
+            st.caption(
+                f"Remembered analysis · {context['source']} · "
+                f"{context['result']['pattern_probability'] * 100:.1f}% pattern similarity"
+            )
             st.caption(f"Experimental verdict: {context.get('verdict', 'available in analysis')}")
         else:
             st.caption("Available on every page. Run an analysis to attach EEG context.")

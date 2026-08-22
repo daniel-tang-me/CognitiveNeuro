@@ -134,7 +134,7 @@ def render_analysis_assistant():
             for index, prompt in enumerate(SUGGESTED_PROMPTS):
                 if st.button(prompt, key=f"assistant_suggestion_{index}", width="stretch"):
                     _submit_streaming(prompt, context)
-                    return
+                    st.rerun()
 
         for message in messages[-6:]:
             with st.chat_message(message["role"]):
@@ -143,7 +143,7 @@ def render_analysis_assistant():
         prompt = st.chat_input("Ask about this analysis…", key="analysis_assistant_input")
         if prompt:
             _submit_streaming(prompt, context)
-            return
+            st.rerun()
 
 
 def _submit_streaming(prompt: str, context: dict | None):
@@ -183,23 +183,7 @@ def _enable_chat_autoscroll():
             observed = popover;
             observer = new MutationObserver(() => {
               requestAnimationFrame(() => {
-                let scroller = popover;
-                let candidate = popover;
-                while (candidate && candidate !== parentDocument.body) {
-                  if (candidate.scrollHeight > candidate.clientHeight) {
-                    const overflow = parentDocument.defaultView
-                      .getComputedStyle(candidate).overflowY;
-                    if (overflow === 'auto' || overflow === 'scroll') {
-                      scroller = candidate;
-                      break;
-                    }
-                  }
-                  candidate = candidate.parentElement;
-                }
-                scroller.scrollTop = scroller.scrollHeight;
-                const messages = popover.querySelectorAll('[data-testid="stChatMessage"]');
-                const latest = messages[messages.length - 1];
-                if (latest) latest.scrollIntoView({block: 'nearest'});
+                popover.scrollTop = popover.scrollHeight;
               });
             });
             observer.observe(popover, {

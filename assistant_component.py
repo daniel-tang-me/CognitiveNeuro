@@ -183,6 +183,11 @@ def _enable_chat_autoscroll():
             observed = popover;
             observer = new MutationObserver(() => {
               requestAnimationFrame(() => {
+                const focused = parentDocument.activeElement;
+                if (focused && popover.contains(focused) &&
+                    (focused.tagName === 'TEXTAREA' || focused.tagName === 'INPUT')) {
+                  return;
+                }
                 let scroller = popover;
                 let candidate = popover;
                 while (candidate && candidate !== parentDocument.body) {
@@ -197,9 +202,6 @@ def _enable_chat_autoscroll():
                   candidate = candidate.parentElement;
                 }
                 scroller.scrollTop = scroller.scrollHeight;
-                const messages = popover.querySelectorAll('[data-testid="stChatMessage"]');
-                const latest = messages[messages.length - 1];
-                if (latest) latest.scrollIntoView({block: 'nearest'});
               });
             });
             observer.observe(popover, {

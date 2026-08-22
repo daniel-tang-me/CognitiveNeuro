@@ -1,7 +1,6 @@
 """Contextual CognitiveNeuro assistant available throughout the application."""
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 from ai_service import answer_question_stream
 
@@ -13,6 +12,7 @@ SUGGESTED_PROMPTS = (
 )
 
 
+@st.fragment
 def render_analysis_assistant():
     """Render a persistent floating popover backed by Streamlit session state."""
     st.markdown(
@@ -94,11 +94,14 @@ def render_analysis_assistant():
         unsafe_allow_html=True,
     )
 
-    with st.popover(
+    assistant_popover = st.popover(
         " ",
         icon=":material/neurology:",
-    ):
-        _enable_chat_autoscroll()
+        key="analysis_assistant_popover",
+        on_change="rerun",
+    )
+    with assistant_popover:
+        _enable_chat_autoscroll(scroll_on_open=bool(assistant_popover.open))
         st.markdown(
             '<div class="sage-question">Any questions?</div>'
             '<div class="sage-greeting">Hi, I\'m <strong>Sage</strong>.</div>'
@@ -113,7 +116,7 @@ def render_analysis_assistant():
         ):
             st.session_state.page = "EEG Analysis"
             st.session_state.top_navigation = "EEG Analysis"
-            st.rerun()
+            st.rerun(scope="app")
 
         context = st.session_state.get("analysis_context")
         if context:
@@ -171,41 +174,49 @@ def _submit_streaming(prompt: str, context: dict | None):
     st.session_state.messages.append({"role": "assistant", "content": response})
 
 
-def _enable_chat_autoscroll():
+def _enable_chat_autoscroll(scroll_on_open: bool = False):
     """Keep the open assistant popover pinned to new streamed content."""
-    components.html(
+    st.html(
         """
         <script>
         (() => {
           const parentDocument = window.parent.document;
+          const scrollOnOpen = __SCROLL_ON_OPEN__;
           const findPopover = () => parentDocument.querySelector(
             'div[data-testid="stPopoverBody"]'
           );
           let observed = null;
           let observer = null;
 
+          const scrollToBottom = (popover) => {
+            let scroller = popover;
+            let candidate = popover;
+            while (candidate && candidate !== parentDocument.body) {
+              if (candidate.scrollHeight > candidate.clientHeight) {
+                const overflow = parentDocument.defaultView
+                  .getComputedStyle(candidate).overflowY;
+                if (overflow === 'auto' || overflow === 'scroll') {
+                  scroller = candidate;
+                  break;
+                }
+              }
+              candidate = candidate.parentElement;
+            }
+            scroller.scrollTop = scroller.scrollHeight;
+          };
+
           const attach = () => {
             const popover = findPopover();
             if (!popover || popover === observed) return;
             if (observer) observer.disconnect();
             observed = popover;
+            if (scrollOnOpen) {
+              requestAnimationFrame(() => scrollToBottom(popover));
+            }
             observer = new MutationObserver(() => {
               requestAnimationFrame(() => {
                 if (!popover.querySelector('#sage-stream-active')) return;
-                let scroller = popover;
-                let candidate = popover;
-                while (candidate && candidate !== parentDocument.body) {
-                  if (candidate.scrollHeight > candidate.clientHeight) {
-                    const overflow = parentDocument.defaultView
-                      .getComputedStyle(candidate).overflowY;
-                    if (overflow === 'auto' || overflow === 'scroll') {
-                      scroller = candidate;
-                      break;
-                    }
-                  }
-                  candidate = candidate.parentElement;
-                }
-                scroller.scrollTop = scroller.scrollHeight;
+                scrollToBottom(popover);
               });
             });
             observer.observe(popover, {
@@ -217,10 +228,9 @@ def _enable_chat_autoscroll():
 
           attach();
           const finder = window.setInterval(attach, 250);
-          window.setTimeout(() => window.clearInterval(finder), 30000);
+          window.setTimeout(() => window.clearInterval(finder), 120000);
         })();
         </script>
-        """,
-        height=0,
-        scrolling=False,
+        """.replace("__SCROLL_ON_OPEN__", "true" if scroll_on_open else "false"),
+        unsafe_allow_javascript=True,
     )

@@ -51,8 +51,6 @@ def render_analysis_assistant():
             width:min(390px,calc(100vw - 32px)); background:#f8f8f4;
             border:1px solid #cddadd; border-radius:4px; padding:1.15rem;
             box-shadow:0 16px 42px rgba(37,59,71,.16);
-            height:min(620px,calc(100vh - 96px)); overflow-y:auto;
-            position:relative; padding-bottom:4.75rem;
         }
         .sage-question {
             display:inline-block; background:#dceff7; color:#000;
@@ -85,8 +83,7 @@ def render_analysis_assistant():
         }
         div[data-testid="stPopoverBody"] [data-testid="stChatInput"] {
             border-radius:2px; border-color:#cbdade; background:#fff;
-            position:absolute; left:1.15rem; right:1.15rem; bottom:1.15rem;
-            width:auto !important; z-index:2;
+            position:sticky; bottom:0; z-index:2;
         }
         @media (max-width:640px) {
             div[data-testid="stPopover"] {
@@ -145,19 +142,16 @@ def render_analysis_assistant():
             for index, prompt in enumerate(SUGGESTED_PROMPTS):
                 if st.button(prompt, key=f"assistant_suggestion_{index}", width="stretch"):
                     _submit_streaming(prompt, context)
-                    st.rerun(scope="fragment")
+                    return
 
-        message_area = st.container()
-        with message_area:
-            for message in messages[-6:]:
-                with st.chat_message(message["role"]):
-                    st.write(message["content"])
+        for message in messages[-6:]:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
 
         prompt = st.chat_input("Ask about this analysis…", key="analysis_assistant_input")
         if prompt:
-            with message_area:
-                _submit_streaming(prompt, context)
-            st.rerun(scope="fragment")
+            _submit_streaming(prompt, context)
+            return
 
 
 def _submit_streaming(prompt: str, context: dict | None):
@@ -191,7 +185,6 @@ def _enable_chat_autoscroll():
           );
           let observed = null;
           let observer = null;
-          let streamTimer = null;
 
           const scrollToBottom = (popover) => {
             const dialog = popover.closest('[role="dialog"]');
@@ -208,7 +201,6 @@ def _enable_chat_autoscroll():
             const popover = findPopover();
             if (!popover || popover === observed) return;
             if (observer) observer.disconnect();
-            if (streamTimer) window.clearInterval(streamTimer);
             observed = popover;
             observer = new MutationObserver((mutations) => {
               const streamChanged = mutations.some((mutation) => {
@@ -226,11 +218,6 @@ def _enable_chat_autoscroll():
               subtree: true,
               characterData: true
             });
-            streamTimer = window.setInterval(() => {
-              if (popover.querySelector('.sage-streaming-response')) {
-                scrollToBottom(popover);
-              }
-            }, 50);
           };
 
           attach();

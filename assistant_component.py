@@ -19,7 +19,7 @@ def render_analysis_assistant():
         """
         <style>
         div[data-testid="stPopover"] {
-            position:fixed !important; inset:auto 24px 24px auto !important;
+            position:fixed !important; inset:auto 24px 48px auto !important;
             width:48px !important; height:48px !important; margin:0 !important;
             z-index:9999 !important;
         }
@@ -86,7 +86,7 @@ def render_analysis_assistant():
         }
         @media (max-width:640px) {
             div[data-testid="stPopover"] {
-                inset:auto 16px 18px auto !important;
+                inset:auto 16px 42px auto !important;
             }
         }
         </style>

@@ -135,9 +135,11 @@ def page_intro(label: str, title: str, description: str):
 
 def disclaimer():
     st.markdown(
-        '<div class="notice"><strong>Research use only.</strong> This experimental '
-        'software does not diagnose Alzheimer\'s disease, estimate an individual\'s '
-        'clinical risk, or replace evaluation by a qualified clinician.</div>',
+        '<div class="notice"><strong>Research Disclaimer:</strong> NeuroSage is an '
+        'experimental predictive model and does not diagnose Alzheimer’s disease. '
+        'Results should not be considered medical advice or a clinical assessment. '
+        'If you are concerned about your cognitive health or Alzheimer’s risk, consult '
+        'a qualified healthcare professional.</div>',
         unsafe_allow_html=True,
     )
 

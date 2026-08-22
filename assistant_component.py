@@ -117,6 +117,8 @@ def render_analysis_assistant():
 
         context = st.session_state.get("analysis_context")
         if context:
+            context = {**context, "page": st.session_state.get("page", "EEG Analysis")}
+        if context:
             st.caption(
                 f"Remembered analysis · {context['source']} · "
                 f"{context['result']['pattern_probability'] * 100:.1f}% pattern similarity"

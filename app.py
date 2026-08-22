@@ -84,7 +84,8 @@ def overview_page():
         st.title("NeuroSage")
         st.markdown(
             '<div class="lede">An experimental platform for exploring EEG-derived spectral '
-            'features and machine-learning pattern analysis in cognitive neuroscience.</div>',
+            'features and machine-learning pattern analysis to study and predict patterns '
+            'associated with Alzheimer’s disease.</div>',
             unsafe_allow_html=True,
         )
         st.write("")

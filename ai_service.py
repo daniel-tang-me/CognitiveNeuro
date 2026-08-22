@@ -1,4 +1,4 @@
-"""OpenRouter integration for the contextual CognitiveNeuro assistant."""
+"""OpenRouter integration for the contextual NeuroSage assistant."""
 
 import json
 import os
@@ -10,16 +10,16 @@ import requests
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_MODEL = "openrouter/free"
 MISSING_CREDENTIALS_MESSAGE = "AI assistant unavailable — API credentials have not been configured."
-GENERIC_ERROR_MESSAGE = "The CognitiveNeuro Assistant is temporarily unavailable. Please try again shortly."
+GENERIC_ERROR_MESSAGE = "The NeuroSage Assistant is temporarily unavailable. Please try again shortly."
 RATE_LIMIT_MESSAGE = (
-    "The CognitiveNeuro Assistant is temporarily busy due to a service rate limit. "
+    "The NeuroSage Assistant is temporarily busy due to a service rate limit. "
     "Please try again shortly."
 )
 
 HTTP_SESSION = requests.Session()
 HTTP_SESSION.trust_env = False
 
-SYSTEM_PROMPT = """You are the CognitiveNeuro educational assistant embedded in an
+SYSTEM_PROMPT = """You are the NeuroSage educational assistant embedded in an
 experimental EEG research application. Explain the supplied analysis in plain,
 careful language. The Random Forest is solely responsible for every numerical
 prediction; never calculate, alter, or invent a score. Never diagnose Alzheimer's

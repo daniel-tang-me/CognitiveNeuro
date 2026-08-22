@@ -56,7 +56,7 @@ def navigate(page: str):
 
 def product_navigation():
     st.markdown(
-        '<div class="product-header"><div><div class="product-name">CognitiveNeuro</div>'
+        '<div class="product-header"><div><div class="product-name">NeuroSage</div>'
         '<div class="product-descriptor">EEG Computational Analysis</div></div>'
         '<div class="product-descriptor">Research / Educational Prototype</div></div>',
         unsafe_allow_html=True,
@@ -81,7 +81,7 @@ def overview_page():
     left, right = st.columns([0.9, 1.1], gap="large", vertical_alignment="center")
     with left:
         st.markdown('<div class="eyebrow">Computational EEG Research Platform</div>', unsafe_allow_html=True)
-        st.title("CognitiveNeuro")
+        st.title("NeuroSage")
         st.markdown(
             '<div class="lede">An experimental platform for exploring EEG-derived spectral '
             'features and machine-learning pattern analysis in cognitive neuroscience.</div>',
@@ -273,7 +273,7 @@ def render_results():
         "describes similarity to a learned model class and does not establish whether "
         "someone has Alzheimer's disease."
     )
-    st.caption("Use the floating CognitiveNeuro Assistant to discuss this active analysis without leaving the workspace.")
+    st.caption("Use the floating NeuroSage Assistant to discuss this active analysis without leaving the workspace.")
 
     if recording:
         recommendation = st.session_state.get("analysis_recommendation")
@@ -282,7 +282,7 @@ def render_results():
             st.subheader("Suggested next steps")
             st.write(recommendation)
             st.caption(
-                "For additional follow-up questions, open the circular CognitiveNeuro "
+                "For additional follow-up questions, open the circular NeuroSage "
                 "Assistant in the bottom-right. It already has this analysis context."
             )
 
@@ -828,7 +828,7 @@ def about_page():
 
 def main():
     st.set_page_config(
-        page_title="CognitiveNeuro | EEG Computational Analysis",
+        page_title="NeuroSage | EEG Computational Analysis",
         page_icon=None,
         layout="wide",
         initial_sidebar_state="expanded",

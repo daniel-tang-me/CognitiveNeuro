@@ -1,4 +1,4 @@
-"""Contextual CognitiveNeuro assistant available throughout the application."""
+"""Contextual NeuroSage assistant available throughout the application."""
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -154,7 +154,7 @@ def _submit_streaming(prompt: str, context: dict | None):
             response = st.write_stream(answer_question_stream(prompt, context, history=history))
         except Exception:
             response = (
-                "The CognitiveNeuro Assistant is temporarily unavailable. Your analysis "
+                "The NeuroSage Assistant is temporarily unavailable. Your analysis "
                 "context remains saved; please try again shortly."
             )
             st.write(response)

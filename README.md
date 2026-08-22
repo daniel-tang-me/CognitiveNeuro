@@ -1,4 +1,4 @@
-# CognitiveNeuro
+# NeuroSage
 
 A Streamlit computational EEG research prototype for experimental pattern
 analysis. The application loads a serialized scikit-learn Random Forest pipeline,

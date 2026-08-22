@@ -42,8 +42,11 @@ analysis. Treat references such as "this," "this page," "my result," "the upload
 "analyze this," "explain this," and "next steps" as references to the supplied
 current analysis unless the user clearly indicates otherwise. Do not ask the user
 to repeat facts already present in the context. Do not give generic advice when
-application-provided facts are available. If no analysis is supplied, say that a
-completed EEG analysis is needed and never invent results."""
+application-provided facts are available. If a validated upload is supplied before
+model analysis, answer from its recording and aggregate channel statistics, clearly
+state that the model has not run, and never invent a score or verdict. If no upload
+or analysis context is supplied, say that an EEG upload or completed analysis is
+needed and never invent results."""
 
 
 def _analysis_summary(context: dict[str, Any] | None) -> str:
@@ -82,10 +85,13 @@ def _analysis_summary(context: dict[str, Any] | None) -> str:
     comparison = result.get("control_probability")
     probability_text = f"{float(probability) * 100:.1f}%" if isinstance(probability, (int, float)) else "unavailable"
     comparison_text = f"{float(comparison) * 100:.1f}%" if isinstance(comparison, (int, float)) else "unavailable"
+    model_has_run = isinstance(probability, (int, float))
+    warnings = context.get("warnings") or []
     lines = [
         "CURRENT PAGE AND EEG ANALYSIS CONTEXT (trusted application-provided facts):",
         f"- Current page: {context.get('page', 'EEG Analysis')}",
         f"- Input source: {context.get('source', 'unknown')}",
+        f"- Model analysis status: {'completed' if model_has_run else 'not yet run'}",
         f"- Analysis timestamp: {context.get('timestamp', 'unknown')}",
         f"- Displayed EEG band values: {band_text}",
         f"- Compact 64-feature summary across channels: {feature_text}",
@@ -96,6 +102,8 @@ def _analysis_summary(context: dict[str, Any] | None) -> str:
         f"- Experimental Random Forest verdict: {context.get('verdict', 'unavailable')}",
         "- Model: RandomForestClassifier; input validated; not clinically validated",
     ]
+    if warnings:
+        lines.append("- Upload validation warnings: " + "; ".join(str(value) for value in warnings[:3]))
     if recording:
         lines.append(
             "- Validated recording: "

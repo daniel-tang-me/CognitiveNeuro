@@ -137,13 +137,13 @@ def estimate_bands_from_raw(eeg: pd.DataFrame) -> dict[str, float]:
     from scipy.signal import welch
     import numpy as np
 
-    powers = {band: 0.0 for band in BANDS}
     ranges = {"Delta": (0.5, 4), "Theta": (4, 8), "Alpha": (8, 13), "Beta": (13, 30), "Gamma": (30, 45)}
-    for channel in CHANNELS:
-        frequency, psd = welch(eeg[channel].to_numpy(), fs=FS, nperseg=128)
-        for band, (low, high) in ranges.items():
-            powers[band] += float(np.sum(psd[(frequency >= low) & (frequency < high)]))
-    return {band: value / len(CHANNELS) for band, value in powers.items()}
+    signals = eeg[CHANNELS].to_numpy(dtype=float).T
+    frequency, psd = welch(signals, fs=FS, nperseg=128, axis=-1)
+    return {
+        band: float(np.sum(psd[:, (frequency >= low) & (frequency < high)], axis=1).mean())
+        for band, (low, high) in ranges.items()
+    }
 
 
 def render_results():
@@ -441,8 +441,25 @@ def analysis_page():
             )
         if uploaded is not None:
             try:
-                dataframe = pd.read_csv(uploaded)
-                valid, errors, warnings, eeg = validate_raw_eeg(dataframe)
+                upload_id = (uploaded.file_id, uploaded.name, uploaded.size)
+                cached_upload = st.session_state.get("validated_eeg_upload")
+                if not cached_upload or cached_upload["id"] != upload_id:
+                    dataframe = pd.read_csv(uploaded)
+                    valid, errors, warnings, eeg = validate_raw_eeg(dataframe)
+                    cached_upload = {
+                        "id": upload_id,
+                        "dataframe": dataframe,
+                        "valid": valid,
+                        "errors": errors,
+                        "warnings": warnings,
+                        "eeg": eeg,
+                    }
+                    st.session_state.validated_eeg_upload = cached_upload
+                dataframe = cached_upload["dataframe"]
+                valid = cached_upload["valid"]
+                errors = cached_upload["errors"]
+                warnings = cached_upload["warnings"]
+                eeg = cached_upload["eeg"]
                 if valid:
                     st.markdown(
                         f'<div class="empty-state"><strong>Feature validation complete.</strong><br>'

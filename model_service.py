@@ -123,7 +123,7 @@ def project_manual_bands(bands: dict[str, float]) -> pd.DataFrame:
 def predict(model, features: pd.DataFrame) -> dict:
     """Return recording-level class probabilities from the existing model."""
     probabilities = model.predict_proba(features)
-    predictions = model.predict(features)
+    predictions = np.asarray(model.classes_).take(np.argmax(probabilities, axis=1))
     class_positions = {int(label): position for position, label in enumerate(model.classes_)}
     if 0 not in class_positions or 1 not in class_positions:
         raise ValueError("Expected a binary model with classes 0 and 1.")

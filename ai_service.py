@@ -189,7 +189,7 @@ def answer_question_stream(
             response.raise_for_status()
             response.encoding = "utf-8"
             received_content = False
-            for line in response.iter_lines(decode_unicode=True):
+            for line in response.iter_lines(chunk_size=1, decode_unicode=True):
                 if not line or not line.startswith("data: "):
                     continue
                 payload = line[6:]

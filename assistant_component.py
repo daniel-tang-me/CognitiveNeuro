@@ -83,6 +83,7 @@ def render_analysis_assistant():
         }
         div[data-testid="stPopoverBody"] [data-testid="stChatInput"] {
             border-radius:2px; border-color:#cbdade; background:#fff;
+            position:sticky; bottom:0; z-index:2;
         }
         @media (max-width:640px) {
             div[data-testid="stPopover"] {
@@ -101,7 +102,7 @@ def render_analysis_assistant():
         on_change="rerun",
     )
     with assistant_popover:
-        _enable_chat_autoscroll(scroll_on_open=bool(assistant_popover.open))
+        _enable_chat_autoscroll()
         st.markdown(
             '<div class="sage-question">Any questions?</div>'
             '<div class="sage-greeting">Hi, I\'m <strong>Sage</strong>.</div>'
@@ -159,6 +160,7 @@ def _submit_streaming(prompt: str, context: dict | None):
     with st.chat_message("user"):
         st.write(prompt)
     with st.chat_message("assistant"):
+        st.html('<span class="sage-streaming-response" aria-hidden="true"></span>')
         try:
             with st.spinner("Sage is reviewing the current analysis…"):
                 response = st.write_stream(answer_question_stream(prompt, context, history=history))
@@ -171,46 +173,28 @@ def _submit_streaming(prompt: str, context: dict | None):
     st.session_state.messages.append({"role": "assistant", "content": response})
 
 
-def _enable_chat_autoscroll(scroll_on_open: bool = False):
-    """Keep the open assistant popover pinned to new streamed content."""
+def _enable_chat_autoscroll():
+    """Follow streamed assistant text without scrolling for user input events."""
     st.html(
         """
         <script>
         (() => {
           const parentDocument = window.parent.document;
-          const scrollOnOpen = __SCROLL_ON_OPEN__;
           const findPopover = () => parentDocument.querySelector(
             'div[data-testid="stPopoverBody"]'
           );
           let observed = null;
           let observer = null;
-          let needsOpenScroll = scrollOnOpen;
 
           const scrollToBottom = (popover) => {
+            const dialog = popover.closest('[role="dialog"]');
             const candidates = [popover, ...popover.querySelectorAll('*')];
-            let candidate = popover.parentElement;
-            while (candidate && candidate !== parentDocument.body) {
-              candidates.push(candidate);
-              candidate = candidate.parentElement;
-            }
+            if (dialog && dialog !== popover) candidates.push(dialog);
             candidates.forEach((element) => {
               if (element.scrollHeight > element.clientHeight) {
                 element.scrollTop = element.scrollHeight;
               }
             });
-
-            const messages = popover.querySelectorAll('[data-testid="stChatMessage"]');
-            const latest = messages[messages.length - 1];
-            if (latest) {
-              const latestBottom = latest.lastElementChild || latest;
-              latestBottom.scrollIntoView({block: 'end', inline: 'nearest'});
-            }
-          };
-
-          const settleAtBottom = (popover) => {
-            scrollToBottom(popover);
-            window.setTimeout(() => scrollToBottom(popover), 40);
-            window.setTimeout(() => scrollToBottom(popover), 120);
           };
 
           const attach = () => {
@@ -218,21 +202,16 @@ def _enable_chat_autoscroll(scroll_on_open: bool = False):
             if (!popover || popover === observed) return;
             if (observer) observer.disconnect();
             observed = popover;
-            if (needsOpenScroll) {
-              window.setTimeout(() => {
-                settleAtBottom(popover);
-                needsOpenScroll = false;
-              }, 50);
-            }
             observer = new MutationObserver((mutations) => {
-              const chatChanged = mutations.some((mutation) => {
+              const streamChanged = mutations.some((mutation) => {
                 const target = mutation.target.nodeType === Node.ELEMENT_NODE
                   ? mutation.target
                   : mutation.target.parentElement;
-                return target && target.closest('[data-testid="stChatMessage"]');
+                const message = target && target.closest('[data-testid="stChatMessage"]');
+                return message && message.querySelector('.sage-streaming-response');
               });
-              if (!chatChanged) return;
-              requestAnimationFrame(() => settleAtBottom(popover));
+              if (!streamChanged) return;
+              requestAnimationFrame(() => scrollToBottom(popover));
             });
             observer.observe(popover, {
               childList: true,
@@ -246,6 +225,6 @@ def _enable_chat_autoscroll(scroll_on_open: bool = False):
           window.setTimeout(() => window.clearInterval(finder), 120000);
         })();
         </script>
-        """.replace("__SCROLL_ON_OPEN__", "true" if scroll_on_open else "false"),
+        """,
         unsafe_allow_javascript=True,
     )

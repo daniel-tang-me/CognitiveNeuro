@@ -2,7 +2,6 @@ from datetime import datetime
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 from assistant_component import render_analysis_assistant
 from model_service import (
@@ -151,20 +150,6 @@ def render_results():
     result = st.session_state.analysis_result
     if not result:
         return
-    st.markdown('<div id="analysis-results-anchor"></div>', unsafe_allow_html=True)
-    if st.session_state.pop("scroll_to_analysis_results", False):
-        components.html(
-            """
-            <script>
-            const target = window.parent.document.getElementById('analysis-results-anchor');
-            if (target) {
-              window.setTimeout(() => target.scrollIntoView({behavior: 'smooth', block: 'start'}), 80);
-            }
-            </script>
-            """,
-            height=0,
-            scrolling=False,
-        )
     percentage = result["pattern_probability"] * 100
     ad_pattern_detected = result["pattern_probability"] >= 0.5
     final_classification = (
@@ -366,7 +351,6 @@ def save_analysis(
         ),
     }
     st.session_state.analysis_recommendation = None
-    st.session_state.scroll_to_analysis_results = True
 
 
 def analysis_page():
@@ -416,7 +400,6 @@ def analysis_page():
                             "Manual aggregate-band projection",
                             feature_values={key: float(value) for key, value in features.iloc[0].items()},
                         )
-                        st.rerun()
                     except Exception as exc:
                         st.markdown(
                             '<div class="error-state"><strong>Analysis could not be completed.</strong><br>'

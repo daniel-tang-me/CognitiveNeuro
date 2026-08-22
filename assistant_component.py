@@ -155,11 +155,6 @@ def _submit_streaming(prompt: str, context: dict | None):
     with st.chat_message("user"):
         st.write(prompt)
     with st.chat_message("assistant"):
-        stream_marker = st.empty()
-        stream_marker.markdown(
-            '<span id="sage-stream-active" style="display:none"></span>',
-            unsafe_allow_html=True,
-        )
         try:
             with st.spinner("Sage is reviewing the current analysis…"):
                 response = st.write_stream(answer_question_stream(prompt, context, history=history))
@@ -169,8 +164,6 @@ def _submit_streaming(prompt: str, context: dict | None):
                 "context remains saved; please try again shortly."
             )
             st.write(response)
-        finally:
-            stream_marker.empty()
     st.session_state.messages.append({"role": "assistant", "content": response})
 
 
@@ -187,6 +180,7 @@ def _enable_chat_autoscroll(scroll_on_open: bool = False):
           );
           let observed = null;
           let observer = null;
+          let needsOpenScroll = scrollOnOpen;
 
           const scrollToBottom = (popover) => {
             let scroller = popover;
@@ -210,12 +204,21 @@ def _enable_chat_autoscroll(scroll_on_open: bool = False):
             if (!popover || popover === observed) return;
             if (observer) observer.disconnect();
             observed = popover;
-            if (scrollOnOpen) {
-              requestAnimationFrame(() => scrollToBottom(popover));
+            if (needsOpenScroll) {
+              window.setTimeout(() => {
+                scrollToBottom(popover);
+                needsOpenScroll = false;
+              }, 50);
             }
-            observer = new MutationObserver(() => {
+            observer = new MutationObserver((mutations) => {
+              const chatChanged = mutations.some((mutation) => {
+                const target = mutation.target.nodeType === Node.ELEMENT_NODE
+                  ? mutation.target
+                  : mutation.target.parentElement;
+                return target && target.closest('[data-testid="stChatMessage"]');
+              });
+              if (!chatChanged) return;
               requestAnimationFrame(() => {
-                if (!popover.querySelector('#sage-stream-active')) return;
                 scrollToBottom(popover);
               });
             });
